@@ -58,7 +58,7 @@ function isNodePattern (cb) {
 }
 
 function throwError (error, cb) {
-    if(cb) cb(new Error(error));
+    if(typeof cb === "function") cb(new Error(error));
 }
 
 function isArrayBuffer (test) {
@@ -180,8 +180,6 @@ class Jimp extends EventEmitter {
             arguments[0] = bufferFromArrayBuffer(arguments[0]);
         function finish (err, ...args) {
             setTimeout(()=> { // run on next tick.
-                if (err) that.emitError("constructor", err);
-                else that.emitMulti("constructor", "initialized");
                 cb.call(that, ...arguments);
             }, 1);
         }
