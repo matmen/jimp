@@ -179,8 +179,6 @@ class Jimp extends EventEmitter {
         if (isArrayBuffer(arguments[0]))
             arguments[0] = bufferFromArrayBuffer(arguments[0]);
         function finish (err, ...args) {
-            var evData = err || {};
-            evData.methodName = "constructor";
             setTimeout(()=> { // run on next tick.
                 if (err) that.emitError("constructor", err);
                 else that.emitMulti("constructor", "initialized");
