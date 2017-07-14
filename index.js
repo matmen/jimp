@@ -58,9 +58,7 @@ function isNodePattern (cb) {
 }
 
 function throwError (error, cb) {
-    if (typeof error === "string") error = new Error(error);
-    if (typeof cb === "function") return cb.call(this, error);
-    else throw error;
+    if(cb) cb.call(that, new Error(error));
 }
 
 function isArrayBuffer (test) {
