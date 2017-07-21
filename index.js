@@ -22,13 +22,13 @@ var EventEmitter = require('events');
 // polyfill Promise for Node < 0.12
 var Promise = global.Promise || require('es6-promise').Promise;
 
-var isDef = (v)=> typeof v !== "undefined" && v !== null;
+var isDef = (v) => typeof v !== "undefined" && v !== null;
 
 // logging methods
 
 var chars = 0;
 
-function log (msg) {
+function log(msg) {
     clear();
     if (typeof process !== 'undefined' && process && process.stdout)
         process.stdout.write(msg);
@@ -37,7 +37,7 @@ function log (msg) {
     chars = msg.length;
 }
 
-function clear () {
+function clear() {
     if (process && process.stdout)
         while (chars-- > 0)
             process.stdout.write("\b");
@@ -46,28 +46,28 @@ function clear () {
 process.on("exit", clear);
 
 // no operation
-function noop () {}
+function noop() {}
 
 // error checking methods
 
-function isNodePattern (cb) {
+function isNodePattern(cb) {
     if (typeof cb === "undefined") return false;
     if (typeof cb !== "function")
         throw new Error("Callback must be a function");
     return true;
 }
 
-function throwError (error, cb) {
-    if(typeof cb === "function") cb(new Error(error));
+function throwError(error, cb) {
+    if (typeof cb === "function") cb(new Error(error));
 }
 
-function isArrayBuffer (test) {
+function isArrayBuffer(test) {
     return Object.prototype.toString.call(test).toLowerCase().indexOf("arraybuffer") > -1;
 }
 
 // Prepare a Buffer object from the arrayBuffer. Necessary in the browser > node conversion,
 // But this function is not useful when running in node directly
-function bufferFromArrayBuffer (arrayBuffer) {
+function bufferFromArrayBuffer(arrayBuffer) {
     var buffer = new Buffer(arrayBuffer.byteLength);
     var view = new Uint8Array(arrayBuffer);
     for (var i = 0; i < buffer.length; ++i) {
@@ -76,7 +76,7 @@ function bufferFromArrayBuffer (arrayBuffer) {
     return buffer;
 }
 
-function loadBufferFromPath (src, cb) {
+function loadBufferFromPath(src, cb) {
     if (FS && typeof FS.readFile === "function" && !src.match(/^(http|ftp)s?:\/\/./)) {
         FS.readFile(src, cb);
     } else {
@@ -86,7 +86,7 @@ function loadBufferFromPath (src, cb) {
                 return cb(null, data);
             } else {
                 let msg = "Could not load Buffer from <" + src + "> " +
-                          "(HTTP: " + response.statusCode + ")";
+                    "(HTTP: " + response.statusCode + ")";
                 return Error(msg);
             }
         });
@@ -107,42 +107,46 @@ function loadBufferFromPath (src, cb) {
  * The emited event comes with a object parameter to the listener with the
  * `methodName` as one attribute.
  */
-function JimpEvMethod (methodName, evName, method) {
-    var evNameBefore = "before-"+evName;
+function JimpEvMethod(methodName, evName, method) {
+    var evNameBefore = "before-" + evName;
     var evNameAfter = evName.replace(/e$/, "") + "ed";
     Jimp.prototype[methodName] = function () {
-        var wrapedCb, cb = arguments[method.length-1];
+        var wrapedCb, cb = arguments[method.length - 1];
         var that = this;
         if (typeof cb === "function") {
             wrapedCb = function (err, data) {
                 if (err) {
                     that.emitError(methodName, err);
                 } else {
-                    that.emitMulti(methodName, evNameAfter, {[methodName]: data});
+                    that.emitMulti(methodName, evNameAfter, {
+                        [methodName]: data
+                    });
                 }
                 cb.apply(this, arguments);
             };
-            arguments[arguments.length-1] = wrapedCb;
+            arguments[arguments.length - 1] = wrapedCb;
         } else {
             wrapedCb = false;
         }
         this.emitMulti(methodName, evNameBefore);
         try {
             var result = method.apply(this, arguments);
-            if (!wrapedCb) this.emitMulti(methodName, evNameAfter, {[methodName]: result});
+            if (!wrapedCb) this.emitMulti(methodName, evNameAfter, {
+                [methodName]: result
+            });
         } catch (err) {
             err.methodName = methodName;
             this.emitError(methodName, err);
         }
         return result;
     }
-    Jimp.prototype[methodName+"Quiet"] = method;
+    Jimp.prototype[methodName + "Quiet"] = method;
 }
 
 /**
  * Simplify JimpEvMethod call for the common `change` evName.
  */
-function JimpEvChange (methodName, method) {
+function JimpEvChange(methodName, method) {
     JimpEvMethod(methodName, "change", method);
 }
 
@@ -172,14 +176,15 @@ function JimpEvChange (methodName, method) {
  */
 
 class Jimp extends EventEmitter {
-    constructor () {
+    constructor() {
         super();
         var cb = noop;
         var that = this;
         if (isArrayBuffer(arguments[0]))
             arguments[0] = bufferFromArrayBuffer(arguments[0]);
-        function finish (err, ...args) {
-            setTimeout(()=> { // run on next tick.
+
+        function finish(err, ...args) {
+            setTimeout(() => { // run on next tick.
                 cb.call(that, ...arguments);
             }, 1);
         }
@@ -204,7 +209,7 @@ class Jimp extends EventEmitter {
                 height: h
             };
 
-            for (let i = 0; i < this.bitmap.data.length; i+=4) {
+            for (let i = 0; i < this.bitmap.data.length; i += 4) {
                 this.bitmap.data.writeUInt32BE(this._background, i);
             }
 
@@ -264,17 +269,17 @@ class Jimp extends EventEmitter {
             // Allow client libs to add new ways to build a Jimp object.
             // Extra constructors must be added by `Jimp.appendConstructorOption()`
 
-            cb = arguments[arguments.length-1];
+            cb = arguments[arguments.length - 1];
             if (typeof cb !== "function") {
-                cb = arguments[arguments.length-2]; // TODO: try to solve the args after cb problem.
+                cb = arguments[arguments.length - 2]; // TODO: try to solve the args after cb problem.
                 if (typeof cb !== "function") cb = function () {};
             }
-            var extraConstructor = Jimp.__extraConstructors.find((c)=> c.test(...arguments));
+            var extraConstructor = Jimp.__extraConstructors.find((c) => c.test(...arguments));
             if (extraConstructor)
                 new Promise(
-                    (resolve, reject)=> extraConstructor.run.call(this, resolve, reject, ...arguments)
+                    (resolve, reject) => extraConstructor.run.call(this, resolve, reject, ...arguments)
                 )
-                .then(()=> finish(null, this))
+                .then(() => finish(null, this))
                 .catch(finish);
             else return throwError.call(this,
                 "No matching constructor overloading was found. " +
@@ -293,20 +298,27 @@ Jimp.__extraConstructors = [];
  * @param runner where the magic happens.
  */
 Jimp.appendConstructorOption = function (name, test, runner) {
-    Jimp.__extraConstructors.push({ name: name, test: test, run: runner });
+    Jimp.__extraConstructors.push({
+        name: name,
+        test: test,
+        run: runner
+    });
 }
 
 /**
  * Emit for multiple listeners
  */
-Jimp.prototype.emitMulti = function emitMulti (methodName, eventName, data={}) {
-    data = Object.assign(data, {methodName, eventName});
+Jimp.prototype.emitMulti = function emitMulti(methodName, eventName, data = {}) {
+    data = Object.assign(data, {
+        methodName,
+        eventName
+    });
     this.emit("any", data);
     if (methodName) this.emit(methodName, data);
     this.emit(eventName, data);
 };
 
-Jimp.prototype.emitError = function emitError (methodName, err) {
+Jimp.prototype.emitError = function emitError(methodName, err) {
     this.emitMulti(methodName, "error", err);
 };
 
@@ -317,7 +329,7 @@ Jimp.prototype.emitError = function emitError (methodName, err) {
  */
 Jimp.read = function (src) {
     return new Promise(function (resolve, reject) {
-        new Jimp(src, (err, image)=> {
+        new Jimp(src, (err, image) => {
             if (err) reject(err);
             else resolve(image);
         });
@@ -326,7 +338,7 @@ Jimp.read = function (src) {
 
 // MIME type methods
 
-function getMIMEFromBuffer (buffer, path) {
+function getMIMEFromBuffer(buffer, path) {
     var fileTypeFromBuffer = FileType(buffer);
     if (fileTypeFromBuffer) {
         // If FileType returns something for buffer, then return the mime given
@@ -341,7 +353,7 @@ function getMIMEFromBuffer (buffer, path) {
 }
 
 // gets image data from a GIF buffer
-function getBitmapFromGIF (data) {
+function getBitmapFromGIF(data) {
     var gifObj = new GIF.GifReader(data);
     var gifData = new Buffer(gifObj.width * gifObj.height * 4);
 
@@ -354,11 +366,11 @@ function getBitmapFromGIF (data) {
 }
 
 // parses a bitmap from the constructor to the JIMP bitmap property
-function parseBitmap (data, path, cb) {
+function parseBitmap(data, path, cb) {
     var that = this;
     var mime = getMIMEFromBuffer(data, path);
     if (typeof mime !== "string")
-        return cb(Error("Could not find MIME for Buffer <" + path + ">"));
+        return cb(Error("Unsupported image hoster"));
 
     this._originalMime = mime.toLowerCase();
 
@@ -400,15 +412,15 @@ function parseBitmap (data, path, cb) {
             return cb.call(this, null, this);
 
         default:
-            return throwError.call(this, "Unsupported MIME type: " + mime, cb);
+            return throwError.call(this, "Unsupported image type (" + mime + ")", cb);
     }
 }
 
 /*
  * Automagically rotates an image based on its EXIF data (if present)
  * @param img a Jimp object
-*/
-function exifRotate (img) {
+ */
+function exifRotate(img) {
     var exif = img._exif;
     if (exif && exif.tags && exif.tags.Orientation) {
         switch (img._exif.tags.Orientation) {
@@ -477,9 +489,9 @@ Jimp.VERTICAL_ALIGN_MIDDLE = 16;
 Jimp.VERTICAL_ALIGN_BOTTOM = 32;
 
 // Discover Jimp directory in any environment. (also in fucking karma)
-function getJimpDir () {
+function getJimpDir() {
     var err = Error();
-    var callLine = err.stack.split(/\n/).filter((l)=> l.match(/getJimpDir/))[0];
+    var callLine = err.stack.split(/\n/).filter((l) => l.match(/getJimpDir/))[0];
     var reWebKit = /.*\(([^?]+\/)[^/]+\).*/;
     var reMoz = /.*@([^?]+\/).*/;
     if (reWebKit.test(callLine)) return callLine.replace(reWebKit, '$1');
@@ -489,16 +501,16 @@ function getJimpDir () {
 Jimp.dirName = getJimpDir();
 
 // Font locations
-Jimp.FONT_SANS_8_BLACK   = Jimp.dirName + "fonts/open-sans/open-sans-8-black/open-sans-8-black.fnt";
-Jimp.FONT_SANS_16_BLACK  = Jimp.dirName + "fonts/open-sans/open-sans-16-black/open-sans-16-black.fnt";
-Jimp.FONT_SANS_32_BLACK  = Jimp.dirName + "fonts/open-sans/open-sans-32-black/open-sans-32-black.fnt";
-Jimp.FONT_SANS_64_BLACK  = Jimp.dirName + "fonts/open-sans/open-sans-64-black/open-sans-64-black.fnt";
+Jimp.FONT_SANS_8_BLACK = Jimp.dirName + "fonts/open-sans/open-sans-8-black/open-sans-8-black.fnt";
+Jimp.FONT_SANS_16_BLACK = Jimp.dirName + "fonts/open-sans/open-sans-16-black/open-sans-16-black.fnt";
+Jimp.FONT_SANS_32_BLACK = Jimp.dirName + "fonts/open-sans/open-sans-32-black/open-sans-32-black.fnt";
+Jimp.FONT_SANS_64_BLACK = Jimp.dirName + "fonts/open-sans/open-sans-64-black/open-sans-64-black.fnt";
 Jimp.FONT_SANS_128_BLACK = Jimp.dirName + "fonts/open-sans/open-sans-128-black/open-sans-128-black.fnt";
 
-Jimp.FONT_SANS_8_WHITE   = Jimp.dirName + "fonts/open-sans/open-sans-8-white/open-sans-8-white.fnt";
-Jimp.FONT_SANS_16_WHITE  = Jimp.dirName + "fonts/open-sans/open-sans-16-white/open-sans-16-white.fnt";
-Jimp.FONT_SANS_32_WHITE  = Jimp.dirName + "fonts/open-sans/open-sans-32-white/open-sans-32-white.fnt";
-Jimp.FONT_SANS_64_WHITE  = Jimp.dirName + "fonts/open-sans/open-sans-64-white/open-sans-64-white.fnt";
+Jimp.FONT_SANS_8_WHITE = Jimp.dirName + "fonts/open-sans/open-sans-8-white/open-sans-8-white.fnt";
+Jimp.FONT_SANS_16_WHITE = Jimp.dirName + "fonts/open-sans/open-sans-16-white/open-sans-16-white.fnt";
+Jimp.FONT_SANS_32_WHITE = Jimp.dirName + "fonts/open-sans/open-sans-32-white/open-sans-32-white.fnt";
+Jimp.FONT_SANS_64_WHITE = Jimp.dirName + "fonts/open-sans/open-sans-64-white/open-sans-64-white.fnt";
 Jimp.FONT_SANS_128_WHITE = Jimp.dirName + "fonts/open-sans/open-sans-128-white/open-sans-128-white.fnt";
 
 // Edge Handling
@@ -604,8 +616,9 @@ Jimp.diff = function (img1, img2, threshold) {
         bmp2.data,
         diff.bitmap.data,
         diff.bitmap.width,
-        diff.bitmap.height,
-        {threshold: threshold}
+        diff.bitmap.height, {
+            threshold: threshold
+        }
     );
 
     return {
@@ -761,7 +774,7 @@ Jimp.prototype.rgba = function (bool, cb) {
  * @param (optional) cb a callback for when complete
  * @returns this for chaining of methods
  */
-JimpEvChange("background", function background (hex, cb) {
+JimpEvChange("background", function background(hex, cb) {
     if (typeof hex !== "number")
         return throwError.call(this, "hex must be a hexadecimal rgba value", cb);
 
@@ -782,7 +795,7 @@ JimpEvChange("background", function background (hex, cb) {
  * @param (optional) cb a callback for when complete
  * @returns this for chaining of methods
  */
-JimpEvChange("scan", function scan (x, y, w, h, f, cb) {
+JimpEvChange("scan", function scan(x, y, w, h, f, cb) {
     if (typeof x !== "number" || typeof y !== "number")
         return throwError.call(this, "x and y must be numbers", cb);
     if (typeof w !== "number" || typeof h !== "number")
@@ -810,7 +823,7 @@ JimpEvChange("scan", function scan (x, y, w, h, f, cb) {
 /**
  * Returns the original MIME of the image (default: "image/png")
  * @returns the MIME as a string
-*/
+ */
 Jimp.prototype.getMIME = function () {
     var mime = this._originalMime || Jimp.MIME_PNG;
     return mime;
@@ -819,7 +832,7 @@ Jimp.prototype.getMIME = function () {
 /**
  * Returns the appropriate file extension for the original MIME of the image (default: "png")
  * @returns the file extension as a string
-*/
+ */
 Jimp.prototype.getExtension = function () {
     var mime = this.getMIME();
     return MIME.extension(mime);
@@ -832,7 +845,7 @@ Jimp.prototype.getExtension = function () {
  * @param (optional) edgeHandling define how to sum pixels from outside the border
  * @param (optional) cb a callback for when complete
  * @returns the index of the pixel or -1 if not found
-*/
+ */
 Jimp.prototype.getPixelIndex = function (x, y, edgeHandling, cb) {
     var xi, yi;
     if (typeof edgeHandling === "function" && typeof cb === "undefined") {
@@ -848,17 +861,17 @@ Jimp.prototype.getPixelIndex = function (x, y, edgeHandling, cb) {
     yi = y = Math.round(y);
 
     if (edgeHandling === Jimp.EDGE_EXTEND) {
-        if (x<0) xi = 0;
-        if (x>=this.bitmap.width) xi = this.bitmap.width - 1;
-        if (y<0) yi = 0;
-        if (y>=this.bitmap.height) yi = this.bitmap.height - 1;
+        if (x < 0) xi = 0;
+        if (x >= this.bitmap.width) xi = this.bitmap.width - 1;
+        if (y < 0) yi = 0;
+        if (y >= this.bitmap.height) yi = this.bitmap.height - 1;
     }
 
     if (edgeHandling === Jimp.EDGE_WRAP) {
-        if (x<0) xi = this.bitmap.width + x;
-        if (x>=this.bitmap.width) xi = x % this.bitmap.width;
-        if (y<0) xi = this.bitmap.height + y;
-        if (y>=this.bitmap.height) yi = y % this.bitmap.height;
+        if (x < 0) xi = this.bitmap.width + x;
+        if (x >= this.bitmap.width) xi = x % this.bitmap.width;
+        if (y < 0) xi = this.bitmap.height + y;
+        if (y >= this.bitmap.height) yi = y % this.bitmap.height;
     }
 
     var i = (this.bitmap.width * yi + xi) << 2;
@@ -877,7 +890,7 @@ Jimp.prototype.getPixelIndex = function (x, y, edgeHandling, cb) {
  * @param y the y coordinate
  * @param (optional) cb a callback for when complete
  * @returns the index of the pixel or -1 if not found
-*/
+ */
 Jimp.prototype.getPixelColor = Jimp.prototype.getPixelColour = function (x, y, cb) {
     if (typeof x !== "number" || typeof y !== "number")
         return throwError.call(this, "x and y must be numbers", cb);
@@ -899,7 +912,7 @@ Jimp.prototype.getPixelColor = Jimp.prototype.getPixelColour = function (x, y, c
  * @param y the y coordinate
  * @param (optional) cb a callback for when complete
  * @returns the index of the pixel or -1 if not found
-*/
+ */
 Jimp.prototype.setPixelColor = Jimp.prototype.setPixelColour = function (hex, x, y, cb) {
     if (typeof hex !== "number" || typeof x !== "number" || typeof y !== "number")
         return throwError.call(this, "hex, x and y must be numbers", cb);
@@ -959,7 +972,7 @@ Jimp.prototype.hash = function (base, cb) {
  * @param (optional) cb a callback for when complete
  * @returns this for chaining of methods
  */
-JimpEvChange("crop", function crop (x, y, w, h, cb) {
+JimpEvChange("crop", function crop(x, y, w, h, cb) {
     if (typeof x !== "number" || typeof y !== "number")
         return throwError.call(this, "x and y must be numbers", cb);
     if (typeof w !== "number" || typeof h !== "number")
@@ -997,13 +1010,13 @@ JimpEvChange("crop", function crop (x, y, w, h, cb) {
  * @returns float between 0 and 1.
  */
 Jimp.colorDiff = (function () {
-    var pow = (n)=> Math.pow(n, 2);
+    var pow = (n) => Math.pow(n, 2);
     var max = Math.max;
     var maxVal = (255 * 255 * 3);
 
-    return function colorDiff (rgba1, rgba2) {
-        if (rgba1.a!==0 && !rgba1.a) rgba1.a = 255;
-        if (rgba2.a!==0 && !rgba2.a) rgba2.a = 255;
+    return function colorDiff(rgba1, rgba2) {
+        if (rgba1.a !== 0 && !rgba1.a) rgba1.a = 255;
+        if (rgba2.a !== 0 && !rgba2.a) rgba2.a = 255;
         return (
             max(pow(rgba1.r - rgba2.r), pow(rgba1.r - rgba2.r - rgba1.a + rgba2.a)) +
             max(pow(rgba1.g - rgba2.g), pow(rgba1.g - rgba2.g - rgba1.a + rgba2.a)) +
@@ -1028,7 +1041,7 @@ Jimp.prototype.autocrop = function () {
     var cb; // callback
     var tolerance = 0.0002; // percent of color difference tolerance (default value)
     var cropOnlyFrames = true; // flag to force cropping only if the image has a real "frame"
-                               // i.e. all 4 sides have some border (default value)
+    // i.e. all 4 sides have some border (default value)
 
     // parse arguments
     for (let a = 0, len = arguments.length; a < len; a++) {
@@ -1052,7 +1065,7 @@ Jimp.prototype.autocrop = function () {
 
     // scan each side for same color borders
     var colorTarget = this.getPixelColor(0, 0); // top left pixel color is the target color
-                                                // for north and east sides
+    // for north and east sides
     var northPixelsToCrop = 0;
     var eastPixelsToCrop = 0;
     var southPixelsToCrop = 0;
@@ -1061,64 +1074,64 @@ Jimp.prototype.autocrop = function () {
     var rgba1 = Jimp.intToRGBA(colorTarget);
 
     north: // north side (scan rows from north to south)
-    for (let y = 0; y < h - minPixelsPerSide; y++) {
-        for (let x = 0; x < w; x++) {
-            let colorXY = this.getPixelColor(x, y);
-            let rgba2 = Jimp.intToRGBA(colorXY);
+        for (let y = 0; y < h - minPixelsPerSide; y++) {
+            for (let x = 0; x < w; x++) {
+                let colorXY = this.getPixelColor(x, y);
+                let rgba2 = Jimp.intToRGBA(colorXY);
 
-            if (Jimp.colorDiff(rgba1, rgba2) > tolerance) {
-                // this pixel is too distant from the first one: abort this side scan
-                break north;
+                if (Jimp.colorDiff(rgba1, rgba2) > tolerance) {
+                    // this pixel is too distant from the first one: abort this side scan
+                    break north;
+                }
             }
+            // this row contains all pixels with the same color: increment this side pixels to crop
+            northPixelsToCrop++;
         }
-        // this row contains all pixels with the same color: increment this side pixels to crop
-        northPixelsToCrop++;
-    }
 
     east: // east side (scan columns from east to west)
-    for (let x = 0; x < w - minPixelsPerSide; x++) {
-        for (let y = 0 + northPixelsToCrop; y < h; y++) {
-            let colorXY = this.getPixelColor(x, y);
-            let rgba2 = Jimp.intToRGBA(colorXY);
+        for (let x = 0; x < w - minPixelsPerSide; x++) {
+            for (let y = 0 + northPixelsToCrop; y < h; y++) {
+                let colorXY = this.getPixelColor(x, y);
+                let rgba2 = Jimp.intToRGBA(colorXY);
 
-            if (Jimp.colorDiff(rgba1, rgba2) > tolerance) {
-                // this pixel is too distant from the first one: abort this side scan
-                break east;
+                if (Jimp.colorDiff(rgba1, rgba2) > tolerance) {
+                    // this pixel is too distant from the first one: abort this side scan
+                    break east;
+                }
             }
+            // this column contains all pixels with the same color: increment this side pixels to crop
+            eastPixelsToCrop++;
         }
-        // this column contains all pixels with the same color: increment this side pixels to crop
-        eastPixelsToCrop++;
-    }
 
     south: // south side (scan rows from south to north)
-    for (let y = h - 1; y >= northPixelsToCrop + minPixelsPerSide; y--) {
-        for (let x = w - eastPixelsToCrop - 1; x >= 0; x--) {
-            let colorXY = this.getPixelColor(x, y);
-            let rgba2 = Jimp.intToRGBA(colorXY);
+        for (let y = h - 1; y >= northPixelsToCrop + minPixelsPerSide; y--) {
+            for (let x = w - eastPixelsToCrop - 1; x >= 0; x--) {
+                let colorXY = this.getPixelColor(x, y);
+                let rgba2 = Jimp.intToRGBA(colorXY);
 
-            if (Jimp.colorDiff(rgba1, rgba2) > tolerance) {
-                // this pixel is too distant from the first one: abort this side scan
-                break south;
+                if (Jimp.colorDiff(rgba1, rgba2) > tolerance) {
+                    // this pixel is too distant from the first one: abort this side scan
+                    break south;
+                }
             }
+            // this row contains all pixels with the same color: increment this side pixels to crop
+            southPixelsToCrop++;
         }
-        // this row contains all pixels with the same color: increment this side pixels to crop
-        southPixelsToCrop++;
-    }
 
     west: // west side (scan columns from west to east)
-    for (let x = w - 1; x >= 0 + eastPixelsToCrop + minPixelsPerSide; x--) {
-        for (let y = h - 1; y >= 0 + northPixelsToCrop; y--) {
-            let colorXY = this.getPixelColor(x, y);
-            let rgba2 = Jimp.intToRGBA(colorXY);
+        for (let x = w - 1; x >= 0 + eastPixelsToCrop + minPixelsPerSide; x--) {
+            for (let y = h - 1; y >= 0 + northPixelsToCrop; y--) {
+                let colorXY = this.getPixelColor(x, y);
+                let rgba2 = Jimp.intToRGBA(colorXY);
 
-            if (Jimp.colorDiff(rgba1, rgba2) > tolerance) {
-                // this pixel is too distant from the first one: abort this side scan
-                break west;
+                if (Jimp.colorDiff(rgba1, rgba2) > tolerance) {
+                    // this pixel is too distant from the first one: abort this side scan
+                    break west;
+                }
             }
+            // this column contains all pixels with the same color: increment this side pixels to crop
+            westPixelsToCrop++;
         }
-        // this column contains all pixels with the same color: increment this side pixels to crop
-        westPixelsToCrop++;
-    }
 
     // safety checks
     var widthOfPixelsToCrop = w - (westPixelsToCrop + eastPixelsToCrop);
@@ -1150,7 +1163,7 @@ Jimp.prototype.autocrop = function () {
             northPixelsToCrop,
             widthOfPixelsToCrop,
             heightOfPixelsToCrop
-       );
+        );
     }
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -1168,7 +1181,7 @@ Jimp.prototype.autocrop = function () {
  * @param srch (optional) the height to which to crop the source image
  * @param (optional) cb a callback for when complete
  * @returns this for chaining of methods
-*/
+ */
 Jimp.prototype.blit = function (src, x, y, srcx, srcy, srcw, srch, cb) {
     if (!(src instanceof Jimp))
         return throwError.call(this, "The source must be a Jimp image", cb);
@@ -1204,12 +1217,12 @@ Jimp.prototype.blit = function (src, x, y, srcx, srcy, srcw, srch, cb) {
     var maxh = this.bitmap.height;
     var that = this;
     src.scanQuiet(srcx, srcy, srcw, srch, function (sx, sy, idx) {
-        if (x+sx >= 0 && y+sy >= 0 && maxw-x-sx > 0 && maxh-y-sy > 0) {
-            var dstIdx = that.getPixelIndex(x+sx-srcx, y+sy-srcy);
+        if (x + sx >= 0 && y + sy >= 0 && maxw - x - sx > 0 && maxh - y - sy > 0) {
+            var dstIdx = that.getPixelIndex(x + sx - srcx, y + sy - srcy);
             that.bitmap.data[dstIdx] = this.bitmap.data[idx];
-            that.bitmap.data[dstIdx+1] = this.bitmap.data[idx+1];
-            that.bitmap.data[dstIdx+2] = this.bitmap.data[idx+2];
-            that.bitmap.data[dstIdx+3] = this.bitmap.data[idx+3];
+            that.bitmap.data[dstIdx + 1] = this.bitmap.data[idx + 1];
+            that.bitmap.data[dstIdx + 2] = this.bitmap.data[idx + 2];
+            that.bitmap.data[dstIdx + 3] = this.bitmap.data[idx + 3];
         }
     });
 
@@ -1224,7 +1237,7 @@ Jimp.prototype.blit = function (src, x, y, srcx, srcy, srcw, srch, cb) {
  * @param y the vertical position to blit the image
  * @param (optional) cb a callback for when complete
  * @returns this for chaining of methods
-*/
+ */
 Jimp.prototype.mask = function (src, x, y, cb) {
     if (!x) x = 0;
     if (!y) y = 0;
@@ -1241,13 +1254,13 @@ Jimp.prototype.mask = function (src, x, y, cb) {
     var h = this.bitmap.height;
     var that = this;
     src.scanQuiet(0, 0, src.bitmap.width, src.bitmap.height, function (sx, sy, idx) {
-        let destX = x+sx;
-        let destY = y+sy;
-        if (destX >=0 && destY >=0 && destX < w && destY < h) {
+        let destX = x + sx;
+        let destY = y + sy;
+        if (destX >= 0 && destY >= 0 && destX < w && destY < h) {
             let dstIdx = that.getPixelIndex(destX, destY);
             let data = this.bitmap.data;
-            let avg = (data[idx+0] + data[idx+1] + data[idx+2]) / 3;
-            that.bitmap.data[dstIdx+3] *= avg / 255;
+            let avg = (data[idx + 0] + data[idx + 1] + data[idx + 2]) / 3;
+            that.bitmap.data[dstIdx + 3] *= avg / 255;
         }
     });
 
@@ -1262,7 +1275,7 @@ Jimp.prototype.mask = function (src, x, y, cb) {
  * @param y the y position to blit the image
  * @param (optional) cb a callback for when complete
  * @returns this for chaining of methods
-*/
+ */
 Jimp.prototype.composite = function (src, x, y, cb) {
     if (!(src instanceof Jimp))
         return throwError.call(this, "The source must be a Jimp image", cb);
@@ -1276,7 +1289,7 @@ Jimp.prototype.composite = function (src, x, y, cb) {
     var that = this;
     src.scanQuiet(0, 0, src.bitmap.width, src.bitmap.height, function (sx, sy, idx) {
         // http://stackoverflow.com/questions/7438263/alpha-compositing-algorithm-blend-modes
-        var dstIdx = that.getPixelIndex(x+sx, y+sy);
+        var dstIdx = that.getPixelIndex(x + sx, y + sy);
 
         var fg = {
             r: this.bitmap.data[idx + 0] / 255,
@@ -1323,12 +1336,12 @@ Jimp.prototype.brightness = function (val, cb) {
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
         if (val < 0.0) {
             this.bitmap.data[idx] = this.bitmap.data[idx] * (1 + val);
-            this.bitmap.data[idx+1] = this.bitmap.data[idx+1] * (1 + val);
-            this.bitmap.data[idx+2] = this.bitmap.data[idx+2] * (1 + val);
+            this.bitmap.data[idx + 1] = this.bitmap.data[idx + 1] * (1 + val);
+            this.bitmap.data[idx + 2] = this.bitmap.data[idx + 2] * (1 + val);
         } else {
             this.bitmap.data[idx] = this.bitmap.data[idx] + ((255 - this.bitmap.data[idx]) * val);
-            this.bitmap.data[idx+1] = this.bitmap.data[idx+1] + ((255 - this.bitmap.data[idx+1]) * val);
-            this.bitmap.data[idx+2] = this.bitmap.data[idx+2] + ((255 - this.bitmap.data[idx+2]) * val);
+            this.bitmap.data[idx + 1] = this.bitmap.data[idx + 1] + ((255 - this.bitmap.data[idx + 1]) * val);
+            this.bitmap.data[idx + 2] = this.bitmap.data[idx + 2] + ((255 - this.bitmap.data[idx + 2]) * val);
         }
     });
 
@@ -1348,7 +1361,7 @@ Jimp.prototype.contrast = function (val, cb) {
     if (val < -1 || val > +1)
         return throwError.call(this, "val must be a number between -1 and +1", cb);
 
-    function adjust (value) {
+    function adjust(value) {
         var x;
         if (val < 0) {
             x = (value > 127) ? 1 - value / 255 : value / 255;
@@ -1365,8 +1378,8 @@ Jimp.prototype.contrast = function (val, cb) {
 
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
         this.bitmap.data[idx] = adjust(this.bitmap.data[idx]);
-        this.bitmap.data[idx+1] = adjust(this.bitmap.data[idx+1]);
-        this.bitmap.data[idx+2] = adjust(this.bitmap.data[idx+2]);
+        this.bitmap.data[idx + 1] = adjust(this.bitmap.data[idx + 1]);
+        this.bitmap.data[idx + 2] = adjust(this.bitmap.data[idx + 2]);
     });
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -1387,8 +1400,8 @@ Jimp.prototype.posterize = function (n, cb) {
 
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
         this.bitmap.data[idx] = (Math.floor(this.bitmap.data[idx] / 255 * (n - 1)) / (n - 1)) * 255;
-        this.bitmap.data[idx+1] = (Math.floor(this.bitmap.data[idx+1] / 255 * (n - 1)) / (n - 1)) * 255;
-        this.bitmap.data[idx+2] = (Math.floor(this.bitmap.data[idx+2] / 255 * (n - 1)) / (n - 1)) * 255;
+        this.bitmap.data[idx + 1] = (Math.floor(this.bitmap.data[idx + 1] / 255 * (n - 1)) / (n - 1)) * 255;
+        this.bitmap.data[idx + 2] = (Math.floor(this.bitmap.data[idx + 2] / 255 * (n - 1)) / (n - 1)) * 255;
     });
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -1399,7 +1412,7 @@ Jimp.prototype.posterize = function (n, cb) {
  * Get an image's histogram
  * @return {object} An object with an array of color occurence counts for each channel (r,g,b)
  */
-function histogram () {
+function histogram() {
     var histogram = {
         r: new Array(256).fill(0),
         g: new Array(256).fill(0),
@@ -1407,9 +1420,9 @@ function histogram () {
     };
 
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, index) {
-        histogram.r[this.bitmap.data[index+0]]++;
-        histogram.g[this.bitmap.data[index+1]]++;
-        histogram.b[this.bitmap.data[index+2]]++;
+        histogram.r[this.bitmap.data[index + 0]]++;
+        histogram.g[this.bitmap.data[index + 1]]++;
+        histogram.b[this.bitmap.data[index + 2]]++;
     });
 
     return histogram;
@@ -1475,8 +1488,8 @@ Jimp.prototype.normalize = function (cb) {
 Jimp.prototype.invert = function (cb) {
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
         this.bitmap.data[idx] = 255 - this.bitmap.data[idx];
-        this.bitmap.data[idx+1] = 255 - this.bitmap.data[idx+1];
-        this.bitmap.data[idx+2] = 255 - this.bitmap.data[idx+2];
+        this.bitmap.data[idx + 1] = 255 - this.bitmap.data[idx + 1];
+        this.bitmap.data[idx + 2] = 255 - this.bitmap.data[idx + 2];
     });
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -1538,19 +1551,19 @@ Jimp.prototype.gaussian = function (r, cb) {
                     let x1 = Math.min(this.bitmap.width - 1, Math.max(0, ix));
                     let y1 = Math.min(this.bitmap.height - 1, Math.max(0, iy));
                     let dsq = (ix - x) * (ix - x) + (iy - y) * (iy - y);
-                    let wght = Math.exp(-dsq / (2*r*r)) / (Math.PI*2*r*r);
+                    let wght = Math.exp(-dsq / (2 * r * r)) / (Math.PI * 2 * r * r);
                     let idx = (y1 * this.bitmap.width + x1) << 2;
                     red += this.bitmap.data[idx] * wght;
-                    green += this.bitmap.data[idx+1] * wght;
-                    blue += this.bitmap.data[idx+2] * wght;
-                    alpha += this.bitmap.data[idx+3] * wght;
+                    green += this.bitmap.data[idx + 1] * wght;
+                    blue += this.bitmap.data[idx + 2] * wght;
+                    alpha += this.bitmap.data[idx + 3] * wght;
                     wsum += wght;
                 }
                 let idx = (y * this.bitmap.width + x) << 2;
                 this.bitmap.data[idx] = Math.round(red / wsum);
-                this.bitmap.data[idx+1] = Math.round(green / wsum);
-                this.bitmap.data[idx+2] = Math.round(blue / wsum);
-                this.bitmap.data[idx+3] = Math.round(alpha / wsum);
+                this.bitmap.data[idx + 1] = Math.round(green / wsum);
+                this.bitmap.data[idx + 2] = Math.round(blue / wsum);
+                this.bitmap.data[idx + 3] = Math.round(alpha / wsum);
             }
         }
     }
@@ -1730,23 +1743,23 @@ Jimp.prototype.convolution = function (kernel, edgeHandling, cb) {
     var weight, rSum, gSum, bSum, ri, gi, bi, xi, yi, idxi;
     var kRows = kernel.length;
     var kCols = kernel[0].length;
-    var rowEnd = Math.floor(kRows/2);
-    var colEnd = Math.floor(kCols/2);
+    var rowEnd = Math.floor(kRows / 2);
+    var colEnd = Math.floor(kCols / 2);
     var rowIni = -rowEnd;
     var colIni = -colEnd;
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
         rSum = gSum = bSum = 0;
-        for (let row=rowIni; row<=rowEnd; row++) {
-            for (let col=colIni; col<=colEnd; col++) {
+        for (let row = rowIni; row <= rowEnd; row++) {
+            for (let col = colIni; col <= colEnd; col++) {
                 xi = x + col;
                 yi = y + row;
-                weight = kernel[row+rowEnd][col+colEnd];
+                weight = kernel[row + rowEnd][col + colEnd];
                 idxi = this.getPixelIndex(xi, yi, edgeHandling);
                 if (idxi === -1) ri = gi = bi = 0;
                 else {
-                    ri = this.bitmap.data[idxi+0];
-                    gi = this.bitmap.data[idxi+1];
-                    bi = this.bitmap.data[idxi+2];
+                    ri = this.bitmap.data[idxi + 0];
+                    gi = this.bitmap.data[idxi + 1];
+                    bi = this.bitmap.data[idxi + 2];
                 }
                 rSum += weight * ri;
                 gSum += weight * gi;
@@ -1759,9 +1772,9 @@ Jimp.prototype.convolution = function (kernel, edgeHandling, cb) {
         if (rSum > 255) rSum = 255;
         if (gSum > 255) gSum = 255;
         if (bSum > 255) bSum = 255;
-        newData[idx+0] = rSum;
-        newData[idx+1] = gSum;
-        newData[idx+2] = bSum;
+        newData[idx + 0] = rSum;
+        newData[idx + 1] = gSum;
+        newData[idx + 2] = bSum;
     });
     this.bitmap.data = newData;
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -1775,10 +1788,10 @@ Jimp.prototype.convolution = function (kernel, edgeHandling, cb) {
  */
 Jimp.prototype.greyscale = function (cb) {
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
-        var grey = parseInt(0.2126 * this.bitmap.data[idx] + 0.7152 * this.bitmap.data[idx+1] + 0.0722 * this.bitmap.data[idx+2], 10);
+        var grey = parseInt(0.2126 * this.bitmap.data[idx] + 0.7152 * this.bitmap.data[idx + 1] + 0.0722 * this.bitmap.data[idx + 2], 10);
         this.bitmap.data[idx] = grey;
-        this.bitmap.data[idx+1] = grey;
-        this.bitmap.data[idx+2] = grey;
+        this.bitmap.data[idx + 1] = grey;
+        this.bitmap.data[idx + 2] = grey;
     });
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -1796,15 +1809,15 @@ Jimp.prototype.grayscale = Jimp.prototype.greyscale;
 Jimp.prototype.sepia = function (cb) {
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
         var red = this.bitmap.data[idx];
-        var green = this.bitmap.data[idx+1];
-        var blue = this.bitmap.data[idx+2];
+        var green = this.bitmap.data[idx + 1];
+        var blue = this.bitmap.data[idx + 2];
 
         red = (red * 0.393) + (green * 0.769) + (blue * 0.189);
         green = (red * 0.349) + (green * 0.686) + (blue * 0.168);
         blue = (red * 0.272) + (green * 0.534) + (blue * 0.131);
         this.bitmap.data[idx] = (red < 255) ? red : 255;
-        this.bitmap.data[idx+1] = (green < 255) ? green : 255;
-        this.bitmap.data[idx+2] = (blue < 255) ? blue : 255;
+        this.bitmap.data[idx + 1] = (green < 255) ? green : 255;
+        this.bitmap.data[idx + 2] = (blue < 255) ? blue : 255;
     });
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -1824,8 +1837,8 @@ Jimp.prototype.opacity = function (f, cb) {
         return throwError.call(this, "f must be a number from 0 to 1", cb);
 
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
-        var v = this.bitmap.data[idx+3] * f;
-        this.bitmap.data[idx+3] = v;
+        var v = this.bitmap.data[idx + 3] * f;
+        this.bitmap.data[idx + 3] = v;
     });
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -1858,7 +1871,7 @@ Jimp.prototype.fade = function (f, cb) {
  */
 Jimp.prototype.opaque = function (cb) {
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
-        this.bitmap.data[idx+3] = 255;
+        this.bitmap.data[idx + 3] = 255;
     });
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -1937,21 +1950,21 @@ Jimp.prototype.cover = function (w, h, alignBits, mode, cb) {
     }
 
     alignBits = alignBits || (Jimp.HORIZONTAL_ALIGN_CENTER | Jimp.VERTICAL_ALIGN_MIDDLE);
-    var hbits = ((alignBits) & ((1<<(3))-1));
+    var hbits = ((alignBits) & ((1 << (3)) - 1));
     var vbits = alignBits >> 3;
 
     // check if more flags than one is in the bit sets
     if (!(
-        ((hbits !== 0) && !(hbits & (hbits - 1))) ||
-        ((vbits !== 0) && !(vbits & (vbits - 1)))
-    ))
+            ((hbits !== 0) && !(hbits & (hbits - 1))) ||
+            ((vbits !== 0) && !(vbits & (vbits - 1)))
+        ))
         return throwError.call(this, "only use one flag per alignment direction", cb);
 
     var alignH = (hbits >> 1); // 0, 1, 2
     var alignV = (vbits >> 1); // 0, 1, 2
 
-    var f = (w/h > this.bitmap.width/this.bitmap.height)
-        ? w/this.bitmap.width : h/this.bitmap.height;
+    var f = (w / h > this.bitmap.width / this.bitmap.height) ?
+        w / this.bitmap.width : h / this.bitmap.height;
     this.scale(f, mode);
     this.crop(((this.bitmap.width - w) / 2) * alignH, ((this.bitmap.height - h) / 2) * alignV, w, h);
 
@@ -1989,21 +2002,21 @@ Jimp.prototype.contain = function (w, h, alignBits, mode, cb) {
     }
 
     alignBits = alignBits || (Jimp.HORIZONTAL_ALIGN_CENTER | Jimp.VERTICAL_ALIGN_MIDDLE);
-    var hbits = ((alignBits) & ((1<<(3))-1));
+    var hbits = ((alignBits) & ((1 << (3)) - 1));
     var vbits = alignBits >> 3;
 
     // check if more flags than one is in the bit sets
     if (!(
-        ((hbits !== 0) && !(hbits & (hbits - 1))) ||
-        ((vbits !== 0) && !(vbits & (vbits - 1)))
-    ))
+            ((hbits !== 0) && !(hbits & (hbits - 1))) ||
+            ((vbits !== 0) && !(vbits & (vbits - 1)))
+        ))
         return throwError.call(this, "only use one flag per alignment direction", cb);
 
     var alignH = (hbits >> 1); // 0, 1, 2
     var alignV = (vbits >> 1); // 0, 1, 2
 
-    var f = (w/h > this.bitmap.width/this.bitmap.height)
-        ? h/this.bitmap.height : w/this.bitmap.width;
+    var f = (w / h > this.bitmap.width / this.bitmap.height) ?
+        h / this.bitmap.height : w / this.bitmap.width;
     var c = this.cloneQuiet().scale(f, mode);
 
     this.resize(w, h, mode);
@@ -2059,8 +2072,8 @@ Jimp.prototype.scaleToFit = function (w, h, mode, cb) {
         mode = null;
     }
 
-    var f = (w/h > this.bitmap.width/this.bitmap.height)
-        ? h/this.bitmap.height : w/this.bitmap.width;
+    var f = (w / h > this.bitmap.width / this.bitmap.height) ?
+        h / this.bitmap.height : w / this.bitmap.width;
     this.scale(f, mode);
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -2170,7 +2183,7 @@ Jimp.prototype.convolute = function (kernel, x, y, w, h, cb) {
     else return this;
 };
 
-function applyKernel (im, kernel, x, y) {
+function applyKernel(im, kernel, x, y) {
     let value = [0, 0, 0];
     let size = (kernel.length - 1) / 2;
 
@@ -2190,7 +2203,7 @@ function applyKernel (im, kernel, x, y) {
  * @param deg the number of degress to rotate the image by
  * @returns nothing
  */
-function simpleRotate (deg) {
+function simpleRotate(deg) {
     var i = Math.round(deg / 90) % 4;
     while (i < 0) i += 4;
 
@@ -2198,7 +2211,7 @@ function simpleRotate (deg) {
         // https://github.com/ekulabuhov/jimp/commit/9a0c7cff88292d88c32a424b11256c76f1e20e46
         var dstBuffer = new Buffer(this.bitmap.data.length);
         var dstOffset = 0;
-        for (let x = this.bitmap.width-1; x >= 0; x--) {
+        for (let x = this.bitmap.width - 1; x >= 0; x--) {
             for (let y = 0; y < this.bitmap.height; y++) {
                 var srcOffset = (this.bitmap.width * y + x) << 2;
                 var data = this.bitmap.data.readUInt32BE(srcOffset, true);
@@ -2223,7 +2236,7 @@ function simpleRotate (deg) {
  * @param (optional) mode resize mode or a boolean, if false then the width and height of the image will not be changed
  * @returns nothing
  */
-function advancedRotate (deg, mode) {
+function advancedRotate(deg, mode) {
     deg %= 360;
     var rad = deg * Math.PI / 180;
     var cosine = Math.cos(rad);
@@ -2242,8 +2255,8 @@ function advancedRotate (deg, mode) {
         w = Math.ceil(Math.abs(this.bitmap.width * cosine) + Math.abs(this.bitmap.height * sine)) + 1;
         h = Math.ceil(Math.abs(this.bitmap.width * sine) + Math.abs(this.bitmap.height * cosine)) + 1;
         // Ensure destination to have even size to a better result.
-        if (w%2 !== 0) w++;
-        if (h%2 !== 0) h++;
+        if (w % 2 !== 0) w++;
+        if (h % 2 !== 0) h++;
 
         var c = this.cloneQuiet();
         this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
@@ -2260,7 +2273,7 @@ function advancedRotate (deg, mode) {
     var bH = this.bitmap.height;
     var dstBuffer = new Buffer(this.bitmap.data.length);
 
-    function createTranslationFunction (deltaX, deltaY) {
+    function createTranslationFunction(deltaX, deltaY) {
         return function (x, y) {
             return {
                 x: (x + deltaX),
@@ -2279,7 +2292,7 @@ function advancedRotate (deg, mode) {
                 cosine * cartesian.x - sine * cartesian.y,
                 cosine * cartesian.y + sine * cartesian.x
             );
-            var dstIdx = (bW * (y-1) + x-1) << 2;
+            var dstIdx = (bW * (y - 1) + x - 1) << 2;
             if (source.x >= 0 && source.x < bW &&
                 source.y >= 0 && source.y < bH) {
                 var srcIdx = (bW * (source.y | 0) + source.x | 0) << 2;
@@ -2295,8 +2308,8 @@ function advancedRotate (deg, mode) {
 
     if (mode === true || typeof mode === "string") {
         // now crop the image to the final size
-        var x = (bW / 2) - (w/2);
-        var y = (bH / 2) - (h/2);
+        var x = (bW / 2) - (w / 2);
+        var y = (bH / 2) - (h / 2);
         this.crop(x, y, w, h);
     }
 
@@ -2418,13 +2431,13 @@ Jimp.prototype.getBuffer = function (mime, cb) {
             return cb.call(this, null, bmp.data);
 
         default:
-            return cb.call(this, "Unsupported MIME type: " + mime);
+            return cb.call(this, "Unsupported image type (" + mime + ")");
     }
 
     return this;
 };
 
-function compositeBitmapOverBackground (image) {
+function compositeBitmapOverBackground(image) {
     return (new Jimp(image.bitmap.width, image.bitmap.height, image._background)).composite(image, 0, 0).bitmap;
 }
 
@@ -2468,9 +2481,9 @@ Jimp.prototype.dither565 = function (cb) {
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
         var tressholdId = ((y & 3) << 2) + (x % 4);
         var dither = rgb565Matrix[tressholdId];
-        this.bitmap.data[idx]   = Math.min(this.bitmap.data[idx]   + dither, 0xff);
-        this.bitmap.data[idx+1] = Math.min(this.bitmap.data[idx+1] + dither, 0xff);
-        this.bitmap.data[idx+2] = Math.min(this.bitmap.data[idx+2] + dither, 0xff);
+        this.bitmap.data[idx] = Math.min(this.bitmap.data[idx] + dither, 0xff);
+        this.bitmap.data[idx + 1] = Math.min(this.bitmap.data[idx + 1] + dither, 0xff);
+        this.bitmap.data[idx + 2] = Math.min(this.bitmap.data[idx + 2] + dither, 0xff);
     });
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -2492,7 +2505,11 @@ Jimp.prototype.color = Jimp.prototype.colour = function (actions, cb) {
 
     var originalScope = this;
     this.scanQuiet(0, 0, this.bitmap.width, this.bitmap.height, function (x, y, idx) {
-        var clr = TinyColor({r: this.bitmap.data[idx], g: this.bitmap.data[idx + 1], b: this.bitmap.data[idx + 2]});
+        var clr = TinyColor({
+            r: this.bitmap.data[idx],
+            g: this.bitmap.data[idx + 1],
+            b: this.bitmap.data[idx + 2]
+        });
 
         var colorModifier = function (i, amount) {
             let c = clr.toRgb();
@@ -2535,9 +2552,9 @@ Jimp.prototype.color = Jimp.prototype.colour = function (actions, cb) {
         });
 
         clr = clr.toRgb();
-        this.bitmap.data[idx]   = clr.r;
-        this.bitmap.data[idx+1] = clr.g;
-        this.bitmap.data[idx+2] = clr.b;
+        this.bitmap.data[idx] = clr.r;
+        this.bitmap.data[idx + 1] = clr.g;
+        this.bitmap.data[idx + 2] = clr.b;
     });
 
     if (isNodePattern(cb)) return cb.call(this, null, this);
@@ -2591,7 +2608,7 @@ Jimp.loadFont = function (file, cb) {
     });
 };
 
-function loadPages (dir, pages) {
+function loadPages(dir, pages) {
     var newPages = pages.map(function (page) {
         return Jimp.read(dir + '/' + page);
     });
@@ -2676,7 +2693,7 @@ Jimp.prototype.print = function (font, x, y, text, maxWidth, maxHeight, cb) {
     else return that;
 };
 
-function xOffsetBasedOnAlignment (font, line, maxWidth, alignment) {
+function xOffsetBasedOnAlignment(font, line, maxWidth, alignment) {
     if (alignment === Jimp.HORIZONTAL_ALIGN_LEFT) {
         return 0;
     }
@@ -2688,16 +2705,16 @@ function xOffsetBasedOnAlignment (font, line, maxWidth, alignment) {
     return maxWidth - measureText(font, line);
 }
 
-function printText (font, x, y, text) {
+function printText(font, x, y, text) {
     for (let i = 0; i < text.length; i++) {
         if (font.chars[text[i]]) {
             drawCharacter(this, font, x, y, font.chars[text[i]]);
-            x += (font.kernings[text[i]] && font.kernings[text[i]][text[i+1]] ? font.kernings[text[i]][text[i+1]] : 0) + (font.chars[text[i]].xadvance || 0);
+            x += (font.kernings[text[i]] && font.kernings[text[i]][text[i + 1]] ? font.kernings[text[i]][text[i + 1]] : 0) + (font.chars[text[i]].xadvance || 0);
         }
     }
 }
 
-function drawCharacter (image, font, x, y, char) {
+function drawCharacter(image, font, x, y, char) {
     if (char.width > 0 && char.height > 0) {
         var imageChar = font.pages[char.page].cloneQuiet().crop(char.x, char.y, char.width, char.height);
         return image.composite(imageChar, x + char.xoffset, y + char.yoffset);
@@ -2705,21 +2722,21 @@ function drawCharacter (image, font, x, y, char) {
     return image;
 }
 
-function measureText (font, text) {
+function measureText(font, text) {
     var x = 0;
     for (let i = 0; i < text.length; i++) {
         if (font.chars[text[i]]) {
             x += font.chars[text[i]].xoffset +
-            (font.kernings[text[i]] && font.kernings[text[i]][text[i+1]]
-                ? font.kernings[text[i]][text[i+1]] : 0) +
-            (font.chars[text[i]].xadvance || 0);
+                (font.kernings[text[i]] && font.kernings[text[i]][text[i + 1]] ?
+                    font.kernings[text[i]][text[i + 1]] : 0) +
+                (font.chars[text[i]].xadvance || 0);
         }
     }
 
     return x;
 }
 
-function measureTextHeight (font, text, maxWidth) {
+function measureTextHeight(font, text, maxWidth) {
     var words = text.split(' ');
     var line = '';
     var textTotalHeight = font.common.lineHeight;
@@ -2781,8 +2798,8 @@ Jimp.prototype.write = function (path, cb) {
 /* Nicely format Jimp object when sent to the console e.g. console.log(imgage) */
 Jimp.prototype.inspect = function () {
     return '<Jimp ' +
-        (this.bitmap === Jimp.prototype.bitmap ? 'pending...'
-            : this.bitmap.width + 'x' + this.bitmap.height) +
+        (this.bitmap === Jimp.prototype.bitmap ? 'pending...' :
+            this.bitmap.width + 'x' + this.bitmap.height) +
         '>';
 };
 
