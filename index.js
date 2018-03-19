@@ -1931,8 +1931,8 @@ Jimp.prototype.resize = function (w, h, mode, cb) {
     if (h === Jimp.AUTO) h = this.bitmap.height * (w / this.bitmap.width);
 
     // round inputs
-    w = Math.min(Math.round(w), 1);
-    h = Math.min(Math.round(h), 1);
+    w = Math.max(Math.round(w), 1);
+    h = Math.max(Math.round(h), 1);
 
     if (typeof Resize2[mode] === "function") {
         var dst = {
